@@ -4,7 +4,11 @@ name: default
 
 steps:
 - name: build
-  image: golang
+  image: golang:1.12
+  environment:
+    GOOS: linux
+    GARCH: amd64
+    CGO_ENABLED: "0"
   commands:
   - go build
   - go test ./...
