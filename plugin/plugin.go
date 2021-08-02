@@ -19,19 +19,21 @@ import (
 var ErrAccessDenied = errors.New("admission: access denied")
 
 // New returns a new admission plugin.
-func New(client *github.Client, org string, team int64) admission.Plugin {
+func New(client *github.Client, org string, team, access_team int64) admission.Plugin {
 	return &plugin{
-		client: client,
-		org:    org,
-		team:   team,
+		client:      client,
+		org:         org,
+		team:        team,
+		access_team: access_team,
 	}
 }
 
 type plugin struct {
 	client *github.Client
 
-	org  string // members of this org are granted access
-	team int64  // members of this team are granted admin access
+	org         string // members of this org are granted access
+	team        int64  // members of this team are granted admin access
+	access_team int64  // members of this team are granted access
 }
 
 func (p *plugin) Admit(ctx context.Context, req *admission.Request) (*drone.User, error) {
@@ -76,9 +78,29 @@ func (p *plugin) Admit(ctx context.Context, req *admission.Request) (*drone.User
 		}
 	}
 
+	if p.access_team != 0 {
+		// check team membership. if the user is a member
+		// of the team they are granted access to the system, otherwise they are not
+		_, _, err = p.client.Teams.GetTeamMembership(ctx, p.access_team, u.Login)
+		if err == nil {
+			logrus.WithField("user", u.Login).
+				WithField("org", p.org).
+				WithField("team", p.access_team).
+				Debugln("grant system access")
+			return nil, nil
+		} else {
+			logrus.WithField("user", u.Login).
+				WithField("org", p.org).
+				WithField("access_team", p.access_team).
+				Debugln("deny standard system access")
+
+			return nil, ErrAccessDenied
+		}
+	}
 	logrus.WithField("user", u.Login).
 		WithField("org", p.org).
-		Debugln("granted standard system access")
+		Debugln("grant standard system access")
 
 	return nil, nil
+
 }

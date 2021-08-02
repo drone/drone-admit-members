@@ -5,6 +5,7 @@ An admission extension to limit system access based on GitHub organization and t
 * if user is organization member, grant access
 * if user is organization admin, grant admin access
 * if user is member of designated team, grant admin access (optional)
+* if user is member of designated team, grant access to drone (optional)
 
 ## Installation
 
@@ -25,6 +26,7 @@ $ docker run -d \
   --env=DRONE_GITHUB_TOKEN=3da541559918a808c2402bba5012f6c6 \
   --env=DRONE_GITHUB_ORG=acme \
   --env=DRONE_GITHUB_TEAM=admins \
+  --env=DRONE_GITHUB_TEAM_ACESS=drone-team \
   --restart=always \
   --name=admitter drone/drone-admit-members
 ```

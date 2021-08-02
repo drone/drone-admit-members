@@ -30,10 +30,11 @@ type spec struct {
 	Debug  bool   `envconfig:"DRONE_DEBUG"`
 	Secret string `envconfig:"DRONE_SECRET"`
 
-	Token    string `envconfig:"DRONE_GITHUB_TOKEN"`
-	Endpoint string `envconfig:"DRONE_GITHUB_ENDPOINT" default:"https://api.github.com/"`
-	Org      string `envconfig:"DRONE_GITHUB_ORG"`
-	Team     string `envconfig:"DRONE_GITHUB_TEAM"`
+	Token      string `envconfig:"DRONE_GITHUB_TOKEN"`
+	Endpoint   string `envconfig:"DRONE_GITHUB_ENDPOINT" default:"https://api.github.com/"`
+	Org        string `envconfig:"DRONE_GITHUB_ORG"`
+	Team       string `envconfig:"DRONE_GITHUB_TEAM"`
+	TeamAccess string `envconfig:"DRONE_GITHUB_TEAM_ACCESS"`
 }
 
 func main() {
@@ -79,11 +80,25 @@ func main() {
 		team = result.GetID()
 	}
 
+	var team_access int64
+	if spec.TeamAccess != "" {
+		result, _, err := client.Teams.GetTeamBySlug(nocontext, spec.Org, spec.TeamAccess)
+		if err != nil {
+			logrus.WithError(err).
+				WithField("org", spec.Org).
+				WithField("team", spec.Team).
+				Fatalln("cannot find team")
+		}
+		team_access = result.GetID()
+
+	}
+
 	handler := admission.Handler(
 		plugin.New(
 			client,
 			spec.Org,
 			team,
+			team_access,
 		),
 		spec.Secret,
 		logrus.StandardLogger(),
