@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"github.com/drone/drone-admit-members/plugin"
@@ -92,5 +93,12 @@ func main() {
 	logrus.Infof("server listening on address %s", spec.Bind)
 
 	http.Handle("/", handler)
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "text/plain")
+		if _, err := io.WriteString(w, "OK"); err != nil {
+			logrus.WithError(err).Error("Failed to write health check response")
+		}
+	})
 	logrus.Fatal(http.ListenAndServe(spec.Bind, nil))
 }
