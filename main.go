@@ -30,10 +30,10 @@ type spec struct {
 	Debug  bool   `envconfig:"DRONE_DEBUG"`
 	Secret string `envconfig:"DRONE_SECRET"`
 
-	Token    string `envconfig:"DRONE_GITHUB_TOKEN"`
-	Endpoint string `envconfig:"DRONE_GITHUB_ENDPOINT" default:"https://api.github.com/"`
-	Org      string `envconfig:"DRONE_GITHUB_ORG"`
-	Team     string `envconfig:"DRONE_GITHUB_TEAM"`
+	Token    string   `envconfig:"DRONE_GITHUB_TOKEN"`
+	Endpoint string   `envconfig:"DRONE_GITHUB_ENDPOINT" default:"https://api.github.com/"`
+	Orgs     []string `envconfig:"DRONE_GITHUB_ORG"`
+	Teams    []string `envconfig:"DRONE_GITHUB_TEAM"`
 }
 
 func main() {
@@ -65,25 +65,38 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	// we need to lookup the github team name
-	// to gets its unique system identifier
-	var team int64
-	if spec.Team != "" {
-		result, _, err := client.Teams.GetTeamBySlug(nocontext, spec.Org, spec.Team)
-		if err != nil {
-			logrus.WithError(err).
-				WithField("org", spec.Org).
-				WithField("team", spec.Team).
-				Fatalln("cannot find team")
+	// we need to lookup the github teams name
+	// to gets their unique system identifiers
+	var teams []int64
+	for _, team := range spec.Teams {
+		var e []error
+
+		for _, org := range spec.Orgs {
+			result, _, err := client.Teams.GetTeamBySlug(nocontext, org, team)
+
+			if err != nil {
+				e = append(e, err)
+				continue
+			}
+
+			teams = append(teams, result.GetID())
+			break
 		}
-		team = result.GetID()
+
+		if len(teams) == 0 {
+			logrus.
+				WithField("errors", e).
+				WithField("orgs", spec.Orgs).
+				WithField("teams", spec.Teams).
+				Fatalln("cannot find teams")
+		}
 	}
 
 	handler := admission.Handler(
 		plugin.New(
 			client,
-			spec.Org,
-			team,
+			spec.Orgs,
+			teams,
 		),
 		spec.Secret,
 		logrus.StandardLogger(),
