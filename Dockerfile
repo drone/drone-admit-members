@@ -1,7 +1,7 @@
-FROM alpine:3.6 as alpine
+FROM alpine:3.15 as alpine
 RUN apk add -U --no-cache ca-certificates
 
-FROM alpine:3.6
+FROM alpine:3.15
 EXPOSE 3000
 
 ENV GODEBUG netdns=go
